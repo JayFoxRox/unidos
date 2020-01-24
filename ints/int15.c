@@ -90,7 +90,7 @@ void int15_init()
 
     sdt.rtc_installed = TRUE;
 
-    uc_mem_write(uc, 0xC0000, &sdt, sizeof(sdt));
+    uc_mem_write(uc, 0xF0000, &sdt, sizeof(sdt));
 }
 
 
@@ -117,7 +117,7 @@ void int15()
 
             uc_reg_write(uc, UC_X86_REG_AH, &r_ah);
 
-            uint16_t r_es = 0xC000;
+            uint16_t r_es = 0xF000;
             uint16_t r_bx = 0x0000;
 
             uc_reg_write(uc, UC_X86_REG_ES, &r_es);
