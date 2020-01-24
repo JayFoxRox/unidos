@@ -21,11 +21,9 @@ include_directories(.)
 include_directories(ints)
 include_directories(util)
 
-include_directories(${LIBUNICORN_INCLUDE_DIR})
-link_libraries(${LIBUNICORN_LIBRARY} pthread)
-
 find_package(Unicorn REQUIRED)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${LIBUNICORN_INCLUDE_DIR})
+link_libraries(${LIBUNICORN_LIBRARY} pthread)
 
 add_executable(unidos ${SOURCE_FILES})

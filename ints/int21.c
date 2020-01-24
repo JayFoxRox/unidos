@@ -14,6 +14,7 @@
 #include <fdtable.h>
 #include <psp.h>
 #include <mount.h>
+#include <assert.h>
 
 #include "fcb.h"
 #include "../util/uc.h"
@@ -217,7 +218,9 @@ void int21()
 
         case 0x0b: // check standard input status
         {
-            uint8_t r_al = feof(stdin) ? 0x00 : 0xff;
+            // Keep claiming that we don't have input; there's no cross-platform way to do this
+            //FIXME: Port to platforms :(
+            uint8_t r_al = 0x00;
 
             uc_reg_write(uc, UC_X86_REG_AL, &r_al);
 
@@ -295,6 +298,8 @@ void int21()
 
         case 0x13: // delete file with FCB
         {
+assert(0);
+#if 0
             uint16_t r_dx, r_ds;
 
             uc_reg_read(uc, UC_X86_REG_DX, &r_dx);
@@ -318,7 +323,7 @@ void int21()
             }
 
             uc_reg_write(uc, UC_X86_REG_AL, &r_al);
-
+#endif
             break;
         }
 
@@ -505,10 +510,13 @@ void int21()
             uc_reg_read(uc, UC_X86_REG_AL, &r_al);
 
             // read until '$'
-            fname = read_str_till_char(MK_FP(r_ds, r_dx), '$');
-            //printf(">>> Trying to open file '%s'\n", fname);
+            fname = read_str_till_char(MK_FP(r_ds, r_dx), '\0');
+            printf(">>> Trying to open file '%s' (0x%04X:%04X)\n", fname, r_ds, r_dx);
             char fixed[512];
             mount_str_to_real(fname, fixed);
+
+strcpy(fixed, "./MTKFLASH.TYP"); // should be at 1b08:133f
+
             hostfd = open(fixed, r_al & 3);
             if (hostfd < 0)
             {   // failed to open
@@ -527,7 +535,7 @@ void int21()
                 {
                     set_flag_C(0);
                     tmp = dosfd;
-                    //printf(">>> OK, dosfd = %u\n", dosfd);
+                    printf(">>> OK, dosfd = %u\n", dosfd);
                 }
             }
             uc_reg_write(uc, UC_X86_REG_AX, &tmp);
@@ -555,6 +563,7 @@ void int21()
             {
                 set_flag_C(1);
                 r_ax = errno;   // FIXME
+                uc_reg_write(uc, UC_X86_REG_AX, &r_ax);
             } else
             {
                 set_flag_C(0);
@@ -660,7 +669,8 @@ void int21()
 
             // read until '$'
             fname = read_str_till_char(MK_FP(r_ds, r_dx), '$');
-            //printf(">>> Trying to delete file '%s'\n", fname);
+            printf(">>> Trying to delete file '%s'\n", fname);
+#if 0
             char fixed[512];
             mount_str_to_real(fname, fixed);
             if (unlink(fixed))
@@ -672,7 +682,7 @@ void int21()
             {
                 set_flag_C(0);
             }
-
+#endif
             break;
         }
         case 0x42: // lseek to set file position
@@ -765,10 +775,18 @@ void int21()
                         r_dx |= IOCTL_SUPPORTS_IOCTL;
                     } else if (S_ISBLK(stat.st_mode))
                     {
+                    } else if (S_ISREG(stat.st_mode))
+                    {
+                        if (!feof(fp))
+                            r_dx |= IOCTL_NON_EOF;
 
+                        r_dx |= IOCTL_IS_CHAR;
                     }
 
                     r_dx |= IOCTL_NOT_REMOVABLE;
+
+                    set_flag_C(0);
+                    uc_reg_write(uc, UC_X86_REG_DX, &r_dx);
 
                     break;
                 }
